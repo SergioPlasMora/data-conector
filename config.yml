@@ -1,0 +1,29 @@
+# Configuración del Data Connector
+# Modifica estos valores para ajustar el rendimiento
+
+# Conexión al Gateway
+gateway:
+  uri: "ws://localhost:8080/ws/connect"
+
+# Identificación del tenant
+tenant:
+  # Si es "auto", se usa el hostname de la máquina
+  id: "auto"
+
+# Configuración de rendimiento
+performance:
+  # Número de conexiones WebSocket paralelas al Gateway
+  # Más conexiones = Mayor throughput, pero más recursos
+  # Recomendado: 1-4 para uso normal, hasta 10 para carga pesada
+  parallel_connections: 4
+
+  # Tamaño máximo de chunk en filas (afecta memoria y latencia)
+  # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)
+  max_chunk_size: 65536
+
+  # Timeout de reconexión en segundos
+  reconnect_delay: 5
+
+# Logging
+logging:
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR
