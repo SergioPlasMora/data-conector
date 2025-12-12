@@ -15,7 +15,7 @@ performance:
   # Número de conexiones WebSocket paralelas al Gateway
   # Más conexiones = Mayor throughput, pero más recursos
   # Recomendado: 1-4 para uso normal, hasta 10 para carga pesada
-  parallel_connections: 4
+  parallel_connections: 10
 
   # Tamaño máximo de chunk en filas (afecta memoria y latencia)
   # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)

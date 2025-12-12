@@ -98,14 +98,12 @@ class ArrowConnectorWorker:
         """Escucha y procesa comandos del Gateway"""
         while True:
             try:
-                # Esperar mensaje con timeout para enviar heartbeat si es necesario
-                # (aunque el gateway es quien controla el estado mayormente, aqui simplemente escuchamos)
                 msg_text = await self.websocket.recv()
                 msg = json.loads(msg_text)
                 
-                # Procesar en background para no bloquear el loop de lectura?
-                # Para KISS, procesamos inline si es rápido, o create_task si demora
-                await self._handle_message(msg)
+                # CLAVE: Procesar en PARALELO para máximo throughput
+                # Cada request se maneja independientemente sin bloquear el loop de lectura
+                asyncio.create_task(self._handle_message(msg))
                 
             except ConnectionClosed:
                 raise
@@ -181,59 +179,65 @@ class ArrowConnectorWorker:
         await self.websocket.send(json.dumps(response))
 
     async def _handle_do_get(self, request_id: str, ticket: str):
-        """Retorna stream de datos usando protocolo binario"""
-        logger.info(f"Starting binary data transfer for {request_id}...")
+        """Retorna stream de datos usando protocolo binario, soportando particiones"""
+        
+        # Decodificar ticket para obtener info de partición
+        try:
+            import base64
+            ticket_bytes = base64.b64decode(ticket)
+            ticket_data = json.loads(ticket_bytes.decode())
+            partition = ticket_data.get("partition", 0)
+            total_partitions = ticket_data.get("total_partitions", 1)
+            logger.info(f"Starting data transfer for {request_id} - Partition {partition}/{total_partitions}")
+        except Exception as e:
+            logger.warning(f"Could not parse ticket, using full dataset: {e}")
+            partition = 0
+            total_partitions = 1
         
         # 1. Enviar metadata de inicio (JSON)
-        # Avisamos al Gateway que empieza un stream para este request
         start_msg = {
             "request_id": request_id, 
             "status": "ok", 
             "type": "stream_start",
-            "schema": base64.b64encode(data_loader.get_schema_bytes()).decode('ascii')
+            "schema": base64.b64encode(data_loader.get_schema_bytes()).decode('ascii'),
+            "partition": partition,
+            "total_partitions": total_partitions
         }
         await self.websocket.send(json.dumps(start_msg))
         
-        # 2. Enviar Batches (Binario)
-        # Obtenemos generador de batches
-        total_rows = 0
+        # 2. Obtener batches y calcular slice para esta partición
         total_bytes = 0
         
         try:
-            # Usar batches mas pequeños para streaming real (ej: 64K filas)
-            # data_loader.get_record_batches devuelve lista por ahora, 
-            # idealmente iterar sobre Table.to_batches(max_chunksize=65536)
-            batches_bytes = data_loader.get_record_batches()
+            all_batches = data_loader.get_record_batches()
+            total_batches = len(all_batches)
             
-            for i, batch_bytes in enumerate(batches_bytes):
-                # Formato frame binario: 
-                # [1 byte tipo] [payload]
-                # Tipo 0x02 = Data
-                
-                # Header simple para que el gateway sepa a que request pertenece si hubiera multiplexacion
-                # Pero por KISS asvumimos flujo sincronico o enviamos un PRE-HEADER JSON
-                # OPCION MAS ROBUSTA: Enviar mensaje JSON "tengo un chunk" y luego el chunk? 
-                # O mejor: El Gateway espera bytes despues de "stream_start".
-                
-                # Enfoque Hibrido FastAPI: websocket.send_bytes() envía frame binario directo.
-                # El Gateway distinguirá por opcode (Text vs Binary).
-                
-                # Enviamos el batch crudo.
+            # Calcular qué batches enviar para esta partición
+            if total_partitions > 1 and total_batches > 1:
+                batch_start = (total_batches * partition) // total_partitions
+                batch_end = (total_batches * (partition + 1)) // total_partitions
+                batches_to_send = all_batches[batch_start:batch_end]
+                logger.debug(f"Partition {partition}: sending batches {batch_start} to {batch_end} of {total_batches}")
+            else:
+                # Si solo hay 1 partición o 1 batch, enviar todo
+                batches_to_send = all_batches
+            
+            # 3. Enviar los batches de esta partición
+            for batch_bytes in batches_to_send:
                 await self.websocket.send(batch_bytes)
-                
                 total_bytes += len(batch_bytes)
-                # Simular pequeño yield para no bloquear loop
-                await asyncio.sleep(0) 
+                await asyncio.sleep(0)  # Yield para no bloquear
 
-            # 3. Enviar Fin de Stream (JSON)
+            # 4. Enviar Fin de Stream (JSON)
             end_msg = {
                 "request_id": request_id,
                 "status": "ok",
                 "type": "stream_end",
+                "partition": partition,
                 "total_bytes": total_bytes
             }
             await self.websocket.send(json.dumps(end_msg))
-            logger.info(f"Binary transfer complete. {len(batches_bytes)} batches, {total_bytes/1024/1024:.2f} MB")
+            logger.info(f"Partition {partition} complete. {len(batches_to_send)} batches, {total_bytes/1024/1024:.2f} MB")
 
         except Exception as e:
             logger.error(f"Error streaming data: {e}")
