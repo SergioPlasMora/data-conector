@@ -1,87 +1,253 @@
-Ps algo no funciono mismo tiempo (venv) PS C:\Users\sergi\OneDrive\Documentos\GitHub\cli-client> python cli.py load-test --requests 1000 --concurrency 1000 --dataset dataset_1mb --tenants-list tenant_sergio
-╭─────────────────────────────────╮
-│ Arrow Flight over WebSocket PoC │
-│ Multi-tenant Load Tester        │
-╰─────────────────────────────────╯
 
-Starting Load Test:
-  Requests:    1000
-  Concurrency: 1000
-  Tenants:     1 (tenant_sergio...)
-  Gateway:     grpc://localhost:8815
-----------------------------------------
+(venv) C:\Users\Usuario\Documents\GitHub\unified-evaluator>python main.py --backend system4 load-test -n 100 -c 50 --connectors tenant_desktop_cfiot58 -d dataset_1mb
+╭───────────────────╮
+│ Unified Evaluator │
+│ Backend: system4  │
+╰───────────────────╯
+2025-12-12 23:40:49,879 - unified-evaluator - INFO - Starting load test: 100 requests, 50 concurrent
+  Progress: 57/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"context deadline exceeded"}"
+>
+  Progress: 58/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"context deadline exceeded", grpc_status:4}"
+>
+  Progress: 59/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 61/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 62/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 63/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 64/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 65/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 66/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 68/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 69/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 70/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 71/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 72/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 73/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 75/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 76/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 77/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 78/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 79/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 80/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 81/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 83/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 84/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 86/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"context deadline exceeded", grpc_status:4}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 88/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"context deadline exceeded"}"
+>
+  Progress: 89/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B::1%5D:8815 {grpc_status:4, grpc_message:"context deadline exceeded"}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B::1%5D:8815 {grpc_message:"context deadline exceeded", grpc_status:4}"
+>
+  Progress: 91/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B::1%5D:8815 {grpc_status:4, grpc_message:"context deadline exceeded"}"
+>
+  Progress: 92/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 94/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 95/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_message:"Deadline Exceeded", grpc_status:4}"
+>
+  Progress: 97/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B::1%5D:8815 {grpc_message:"context deadline exceeded", grpc_status:4}"
+>
+  Progress: 98/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "Deadline Exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer  {grpc_status:4, grpc_message:"Deadline Exceeded"}"
+>
+  Progress: 99/100System3 query error: <_MultiThreadedRendezvous of RPC that terminated with:
+        status = StatusCode.DEADLINE_EXCEEDED
+        details = "context deadline exceeded"
+        debug_error_string = "UNKNOWN:Error received from peer ipv6:%5B::1%5D:8815 {grpc_message:"context deadline exceeded", grpc_status:4}"
+>
+  Progress: 100/100
 
 Load Test Results
-        Summary Metrics        
-╭────────────────┬────────────╮
-│ Metric         │ Value      │
-├────────────────┼────────────┤
-│ Duration       │ 207.32 s   │
-│ Total Requests │ 1000       │
-│ Successful     │ 1000       │
-│ Failed         │ 0          │
-│ Throughput     │ 4.82 req/s │
-│ Total Data     │ 896.94 MB  │
-╰────────────────┴────────────╯
-   Latency Statistics    
-╭───────────┬───────────╮
-│ Statistic │ Time (ms) │
-├───────────┼───────────┤
-│ Average   │ 206.57    │
-│ P95       │ 225.00    │
-╰───────────┴───────────╯
-(venv) PS C:\Users\sergi\OneDrive\Documentos\GitHub\cli-client>  y si se estan registrando las coneciones mira (venv) PS C:\Users\sergi\OneDrive\Documentos\GitHub\data-conector> python service.py --test
-2025-12-11 13:59:12,537 - root - INFO - --- RUNNING IN TEST MODE (Console) ---
-2025-12-11 13:59:12,537 - data_loader - INFO - Generating synthetic dataset with 1,000,000 rows...
-2025-12-11 13:59:14,495 - data_loader - INFO - Dataset generated in 1.96s. Size: 61.99 MB
-2025-12-11 13:59:14,557 - Connector - INFO - ArrowConnector initialized:
-2025-12-11 13:59:14,557 - Connector - INFO -   Gateway URI: ws://localhost:8080/ws/connect
-2025-12-11 13:59:14,557 - Connector - INFO -   Tenant ID: tenant_sergio
-2025-12-11 13:59:14,558 - Connector - INFO -   Parallel Connections: 4
-2025-12-11 13:59:14,560 - Connector - INFO - [Worker 0] Starting for tenant: tenant_sergio
-2025-12-11 13:59:14,560 - Connector - INFO - [Worker 0] Connecting to ws://localhost:8080/ws/connect...
-2025-12-11 13:59:14,616 - Connector - INFO - [Worker 1] Starting for tenant: tenant_sergio
-2025-12-11 13:59:14,616 - Connector - INFO - [Worker 1] Connecting to ws://localhost:8080/ws/connect...
-2025-12-11 13:59:14,617 - Connector - INFO - [Worker 2] Starting for tenant: tenant_sergio
-2025-12-11 13:59:14,617 - Connector - INFO - [Worker 2] Connecting to ws://localhost:8080/ws/connect...
-2025-12-11 13:59:14,618 - Connector - INFO - [Worker 3] Starting for tenant: tenant_sergio
-2025-12-11 13:59:14,618 - Connector - INFO - [Worker 3] Connecting to ws://localhost:8080/ws/connect...
-2025-12-11 13:59:14,684 - Connector - INFO - [Worker 2] Connected!
-2025-12-11 13:59:14,684 - Connector - INFO - [Worker 1] Connected!
-2025-12-11 13:59:14,686 - Connector - INFO - [Worker 3] Connected!
-2025-12-11 13:59:14,687 - Connector - INFO - [Worker 0] Connected!
-2025-12-11 13:59:14,690 - Connector - INFO - Registered successfully. Session: 55c61885-5d72-4861-ae13-3b21746eeee9
-2025-12-11 13:59:14,692 - Connector - INFO - Registered successfully. Session: 11992e41-e987-4f2a-bee5-9bf441112f29
-2025-12-11 13:59:14,694 - Connector - INFO - Registered successfully. Session: 3110138e-7a19-49d2-ab49-2ffaa1f1ec5a
-2025-12-11 13:59:14,694 - Connector - INFO - Registered successfully. Session: bdc06b0d-0e1c-4e18-9328-e22c21134023 
-INFO:     ('172.19.0.1', 46776) - "WebSocket /ws/connect" [accepted]
+             Summary
+╭──────────────────┬────────────╮
+│ Metric           │ Value      │
+├──────────────────┼────────────┤
+│ Backend          │ system4    │
+│ Pattern          │ sync       │
+│ Duration         │ 60.39 s    │
+│ Total Requests   │ 100        │
+│ Successful       │ 57         │
+│ Failed           │ 43         │
+│ Throughput       │ 1.66 req/s │
+│ Data Transferred │ 78.14 MB   │
+╰──────────────────┴────────────╯
+  Latency Statistics
+         (ms)
+╭───────────┬────────╮
+│ Statistic │ Time   │
+├───────────┼────────┤
+│ Average   │ 73.21  │
+│ Min       │ 15.18  │
+│ Max       │ 264.07 │
+│ P50       │ 36.09  │
+│ P95       │ 259.67 │
+│ P99       │ 263.20 │
+│ Avg TTFB  │ 23.58  │
+╰───────────┴────────╯
 
-INFO:     connection open
-
-INFO:     ('172.19.0.1', 46780) - "WebSocket /ws/connect" [accepted]
-
-INFO:     connection open
-
-INFO:     ('172.19.0.1', 46790) - "WebSocket /ws/connect" [accepted]
-
-INFO:     connection open
-
-INFO:     ('172.19.0.1', 46798) - "WebSocket /ws/connect" [accepted]
-
-INFO:     connection open
-
-2025-12-11 20:59:14,663 - app.websocket_manager - INFO - Registered tenant: tenant_sergio (Connection #1)
-
-2025-12-11 20:59:14,664 - app.main - INFO - Connector registered: tenant_sergio
-
-2025-12-11 20:59:14,665 - app.websocket_manager - INFO - Registered tenant: tenant_sergio (Connection #2)
-
-2025-12-11 20:59:14,665 - app.main - INFO - Connector registered: tenant_sergio
-
-2025-12-11 20:59:14,667 - app.websocket_manager - INFO - Registered tenant: tenant_sergio (Connection #3)
-
-2025-12-11 20:59:14,667 - app.main - INFO - Connector registered: tenant_sergio
-
-2025-12-11 20:59:14,667 - app.websocket_manager - INFO - Registered tenant: tenant_sergio (Connection #4)
-
-2025-12-11 20:59:14,667 - app.main - INFO - Connector registered: tenant_sergio 
+(venv) C:\Users\Usuario\Documents\GitHub\unified-evaluator>

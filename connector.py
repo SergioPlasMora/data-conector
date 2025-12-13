@@ -57,8 +57,9 @@ class ArrowConnectorWorker:
                 async with websockets.connect(
                     self.gateway_uri,
                     max_size=None,
-                    ping_interval=None,
-                    ping_timeout=300
+                    ping_interval=None,  # Disable client pings (server manages keepalive)
+                    ping_timeout=None,   # Disable ping timeout completely
+                    close_timeout=60     # Allow 60s for graceful close
                 ) as websocket:
                     self.websocket = websocket
                     logger.info(f"[Worker {self.worker_id}] Connected!")
