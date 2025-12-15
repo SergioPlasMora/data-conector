@@ -19,7 +19,7 @@ performance:
 
   # Tamaño máximo de chunk en filas (afecta memoria y latencia)
   # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)
-  max_chunk_size: 65536
+  max_chunk_size: 16384
 
   # Timeout de reconexión en segundos
   reconnect_delay: 5

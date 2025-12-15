@@ -114,15 +114,33 @@ class DataLoader:
         if self._table is None:
             self.load_or_generate_dataset()
         return self._table.schema.serialize().to_pybytes()
-
-    def get_record_batches(self, max_chunksize: int = 65536) -> list[bytes]:
-        """Retorna los batches serializados como lista de bytes."""
+    
+    def get_schema(self) -> pa.Schema:
+        """Retorna el esquema PyArrow"""
         if self._table is None:
             self.load_or_generate_dataset()
-            
-        batches_bytes = []
+        return self._table.schema
+
+    def get_record_batches(self, max_chunksize: int = 65536, as_bytes: bool = True) -> list:
+        """
+        Retorna los batches del dataset.
+        
+        Args:
+            max_chunksize: Máximo número de filas por batch
+            as_bytes: Si True, retorna bytes serializados. Si False, retorna RecordBatch objects.
+        
+        Returns:
+            Lista de bytes o RecordBatch según as_bytes
+        """
+        if self._table is None:
+            self.load_or_generate_dataset()
+        
         batches = self._table.to_batches(max_chunksize=max_chunksize)
         
+        if not as_bytes:
+            return batches
+            
+        batches_bytes = []
         for batch in batches:
             sink = pa.BufferOutputStream()
             with pa.ipc.new_stream(sink, self._table.schema) as writer:
