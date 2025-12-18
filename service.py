@@ -1,8 +1,6 @@
 """
-Servicio Windows para Arrow Data Connector.
-Soporta dos modos de conexión:
-  - websocket: Túnel inverso (connector inicia conexión al gateway)
-  - grpc: Flight Server (gateway inicia conexión al connector)
+Servicio Windows para Arrow Data Connector (WebSocket Mode).
+Usa túnel inverso WebSocket para conectar al Gateway.
 
 Uso:
   python service.py install  (Instalar servicio)
@@ -37,15 +35,11 @@ def load_config():
 
 CONFIG = load_config()
 
-def get_connector_mode():
-    """Retorna el modo de conexión: 'websocket' o 'grpc'"""
-    return CONFIG.get('gateway', {}).get('connector_mode', 'websocket')
 
-
-def run_websocket_mode():
-    """Ejecuta el modo WebSocket (túnel inverso)"""
+def run_connector():
+    """Ejecuta el conector WebSocket (túnel inverso)"""
     from connector import ArrowConnector
-    logger.info("=== Starting in WEBSOCKET mode (reverse tunnel) ===")
+    logger.info("=== Starting Arrow Data Connector (WebSocket mode) ===")
     connector = ArrowConnector()
     try:
         asyncio.run(connector.run())
@@ -55,30 +49,10 @@ def run_websocket_mode():
         logger.error(f"Error: {e}")
 
 
-def run_grpc_mode():
-    """Ejecuta el modo gRPC (Flight Server pasivo)"""
-    from flight_server import run_server
-    
-    flight_config = CONFIG.get('flight_server', {})
-    host = flight_config.get('host', '0.0.0.0')
-    port = flight_config.get('port', 50051)
-    
-    logger.info("=== Starting in GRPC mode (Flight Server) ===")
-    logger.info(f"  Listening on {host}:{port}")
-    logger.info("  Gateway must connect to this address")
-    
-    run_server(host=host, port=port)
-
-
 def run_test_mode():
     """Ejecución manual para desarrollo/testing"""
-    mode = get_connector_mode()
-    logger.info(f"--- RUNNING IN TEST MODE (Console) - Mode: {mode.upper()} ---")
-    
-    if mode == 'grpc':
-        run_grpc_mode()
-    else:
-        run_websocket_mode()
+    logger.info("--- RUNNING IN TEST MODE (Console) ---")
+    run_connector()
 
 
 # === Windows Service Support ===
@@ -100,14 +74,12 @@ if HAS_WIN32:
     class ArrowConnectorService(win32serviceutil.ServiceFramework):
         _svc_name_ = "ArrowConnector"
         _svc_display_name_ = "Arrow Data Connector"
-        _svc_description_ = "Conecta datos on-premise con SaaS Gateway (WebSocket o gRPC)"
+        _svc_description_ = "Conecta datos on-premise con SaaS Gateway via WebSocket"
 
         def __init__(self, args):
             win32serviceutil.ServiceFramework.__init__(self, args)
             self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
-            self.mode = get_connector_mode()
             self.connector = None
-            self.flight_server = None
             self.loop = None
 
         def SvcStop(self):
@@ -118,8 +90,6 @@ if HAS_WIN32:
             
             if self.connector:
                 self.connector.stop()
-            if self.flight_server:
-                self.flight_server.shutdown()
 
         def SvcDoRun(self):
             """Callback principal al iniciar"""
@@ -132,23 +102,13 @@ if HAS_WIN32:
 
         def main(self):
             """Loop principal del servicio"""
-            logger.info(f"Service started in {self.mode.upper()} mode")
+            logger.info("Service started (WebSocket mode)")
             
             try:
-                if self.mode == 'grpc':
-                    from flight_server import DataConnectorFlightServer
-                    flight_config = CONFIG.get('flight_server', {})
-                    host = flight_config.get('host', '0.0.0.0')
-                    port = flight_config.get('port', 50051)
-                    
-                    self.flight_server = DataConnectorFlightServer(host=host, port=port)
-                    self.flight_server.serve()
-                else:
-                    # WebSocket mode
-                    self.connector = ArrowConnector()
-                    self.loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(self.loop)
-                    self.loop.run_until_complete(self.connector.run())
+                self.connector = ArrowConnector()
+                self.loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(self.loop)
+                self.loop.run_until_complete(self.connector.run())
                     
             except Exception as e:
                 logger.error(f"Service error: {e}")
@@ -175,4 +135,3 @@ if __name__ == '__main__':
     else:
         # Sin soporte de Windows Service, ejecutar en modo test
         run_test_mode()
-

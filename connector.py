@@ -89,7 +89,8 @@ class ArrowConnectorWorker:
         data = json.loads(response)
         
         if data.get("status") == "ok":
-            logger.info(f"Registered successfully. Session: {data.get('session_id')}")
+            session_id = data.get('data', {}).get('session_id')
+            logger.info(f"Registered successfully. Session: {session_id}")
             return True
         else:
             logger.error(f"Registration failed: {data}")
@@ -183,17 +184,24 @@ class ArrowConnectorWorker:
         """Retorna stream de datos usando protocolo binario, soportando particiones"""
         
         # Decodificar ticket para obtener info de partición
-        try:
-            import base64
-            ticket_bytes = base64.b64decode(ticket)
-            ticket_data = json.loads(ticket_bytes.decode())
-            partition = ticket_data.get("partition", 0)
-            total_partitions = ticket_data.get("total_partitions", 1)
-            logger.info(f"Starting data transfer for {request_id} - Partition {partition}/{total_partitions}")
-        except Exception as e:
-            logger.warning(f"Could not parse ticket, using full dataset: {e}")
-            partition = 0
-            total_partitions = 1
+        # El ticket puede ser:
+        # 1. Un string base64 con JSON (partición info)
+        # 2. Un string plano (nombre del dataset)
+        partition = 0
+        total_partitions = 1
+        
+        if ticket:
+            try:
+                import base64
+                # Intentar decodificar como base64 + JSON
+                ticket_bytes = base64.b64decode(ticket)
+                ticket_data = json.loads(ticket_bytes.decode('utf-8'))
+                partition = ticket_data.get("partition", 0)
+                total_partitions = ticket_data.get("total_partitions", 1)
+                logger.info(f"Starting data transfer for {request_id} - Partition {partition}/{total_partitions}")
+            except Exception:
+                # El ticket es probablemente solo el nombre del dataset - esto es normal
+                logger.debug(f"Ticket is plain dataset name: {ticket[:50] if ticket else 'empty'}...")
         
         # 1. Enviar metadata de inicio (JSON)
         start_msg = {
