@@ -250,8 +250,13 @@ class ArrowConnectorWorker:
                 batches_to_send = all_batches
             
             # 3. Enviar los batches de esta partición
+            # Prefixar cada chunk con request_id (36 bytes UTF-8) para routing en el Gateway
+            request_id_bytes = request_id.encode('utf-8').ljust(36)[:36]  # Exactamente 36 bytes
+            
             for batch_bytes in batches_to_send:
-                await self.websocket.send(batch_bytes)
+                # Enviar: [request_id 36 bytes] + [Arrow IPC bytes]
+                prefixed_chunk = request_id_bytes + batch_bytes
+                await self.websocket.send(prefixed_chunk)
                 total_bytes += len(batch_bytes)
                 await asyncio.sleep(0)  # Yield para no bloquear
 

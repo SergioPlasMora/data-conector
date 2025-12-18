@@ -3,14 +3,21 @@
 
 # Conexión al Gateway
 gateway:
+  # URI WebSocket
   # uri: "ws://192.99.247.70:8081/ws/connect"
   uri: "ws://localhost:8081/ws/connect"
+
+  # URI gRPC (para modo gRPC)
+  grpc_uri: "localhost:50051"
+
+  # Modo de transporte: "websocket" o "grpc"
+  transport_mode: "websocket"
 
 # Identificación del tenant
 tenant:
   # Si es "auto", se usa el hostname de la máquina
   # Server
-  # 5de85659-2884-44fa-97fb-307dae79cb7f
+  # id: "5de85659-2884-44fa-97fb-307dae79cb7f"
   # 511baf05-5839-4f58-a74e-661262facba8
   # bf935f05-bf2e-4138-bfec-f4baaf99fecc
   id: "511baf05-5839-4f58-a74e-661262facba8"
@@ -25,7 +32,7 @@ performance:
   # Habilitar particiones paralelas para streaming
   # true = calcula particiones óptimas según tamaño (recomendado)
   # false = siempre 1 partición (para pruebas comparativas)
-  parallel_partitions: true
+  parallel_partitions: false
 
   # Tamaño máximo de chunk en filas (afecta memoria y latencia)
   # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)

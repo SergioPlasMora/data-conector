@@ -37,10 +37,18 @@ CONFIG = load_config()
 
 
 def run_connector():
-    """Ejecuta el conector WebSocket (túnel inverso)"""
-    from connector import ArrowConnector
-    logger.info("=== Starting Arrow Data Connector (WebSocket mode) ===")
-    connector = ArrowConnector()
+    """Ejecuta el conector según el modo de transporte configurado"""
+    transport_mode = CONFIG.get('gateway', {}).get('transport_mode', 'websocket')
+    
+    if transport_mode == 'grpc':
+        from connector_grpc import GRPCConnector
+        logger.info("=== Starting Arrow Data Connector (gRPC mode) ===")
+        connector = GRPCConnector()
+    else:
+        from connector import ArrowConnector
+        logger.info("=== Starting Arrow Data Connector (WebSocket mode) ===")
+        connector = ArrowConnector()
+    
     try:
         asyncio.run(connector.run())
     except KeyboardInterrupt:
