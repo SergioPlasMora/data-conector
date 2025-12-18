@@ -11,7 +11,7 @@ gateway:
   grpc_uri: "localhost:50051"
 
   # Modo de transporte: "websocket" o "grpc"
-  transport_mode: "websocket"
+  transport_mode: "grpc"
 
 # Identificación del tenant
 tenant:

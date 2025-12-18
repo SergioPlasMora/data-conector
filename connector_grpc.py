@@ -1,9 +1,8 @@
 """
 Cliente gRPC para conexión con el Gateway (modo túnel reverso)
-Usa protobuf struct_pb2 para compatibilidad con el servidor Go
+Usa protobuf nativo generado por protoc para máximo rendimiento
 """
 import asyncio
-import json
 import logging
 import base64
 import platform
@@ -11,8 +10,10 @@ from pathlib import Path
 
 import grpc
 import yaml
-from google.protobuf import struct_pb2
-from google.protobuf.json_format import MessageToDict
+
+# Importar tipos generados por protoc
+from proto import connector_pb2
+from proto import connector_pb2_grpc
 
 from data_loader import data_loader
 
@@ -39,7 +40,7 @@ PARALLEL_PARTITIONS = config.get('performance', {}).get('parallel_partitions', T
 
 
 class GRPCConnector:
-    """Conector gRPC bidireccional al Gateway"""
+    """Conector gRPC bidireccional al Gateway con protobuf nativo"""
     
     def __init__(self, grpc_uri: str = None, tenant_id: str = None):
         self.grpc_uri = grpc_uri or GRPC_URI
@@ -50,7 +51,7 @@ class GRPCConnector:
         # Cargar datos al inicio
         data_loader.load_or_generate_dataset()
         
-        logger.info(f"GRPCConnector initialized:")
+        logger.info(f"GRPCConnector initialized (native protobuf):")
         logger.info(f"  Gateway URI: {self.grpc_uri}")
         logger.info(f"  Tenant ID: {self.tenant_id}")
     
@@ -62,7 +63,7 @@ class GRPCConnector:
             try:
                 logger.info(f"Connecting to gRPC server {self.grpc_uri}...")
                 
-                # Crear canal gRPC
+                # Crear canal gRPC async
                 self.channel = grpc.aio.insecure_channel(self.grpc_uri)
                 
                 # Establecer stream bidireccional
@@ -77,28 +78,21 @@ class GRPCConnector:
                 await asyncio.sleep(RECONNECT_DELAY)
     
     async def _connect_and_run(self):
-        """Establece stream bidireccional con el Gateway"""
+        """Establece stream bidireccional con el Gateway usando protobuf nativo"""
         
-        # Cola para mensajes salientes (protobuf Struct serializado)
+        # Cola para mensajes salientes (protobuf messages)
         outgoing = asyncio.Queue()
         
-        # Helper para convertir dict a protobuf Struct serializado
-        def dict_to_proto(d: dict) -> bytes:
-            s = struct_pb2.Struct()
-            s.update(d)
-            return s.SerializeToString()
-        
-        # Enviar mensaje de registro
-        register_msg = {
-            "request_id": "",
-            "type": "register",
-            "register": {
-                "tenant_id": self.tenant_id,
-                "version": "1.0.0",
-                "datasets": ["sales"]
-            }
-        }
-        await outgoing.put(dict_to_proto(register_msg))
+        # Enviar mensaje de registro usando tipo nativo
+        register_msg = connector_pb2.ConnectorMessage(
+            request_id="",
+            register=connector_pb2.RegisterRequest(
+                tenant_id=self.tenant_id,
+                version="1.0.0-native",
+                datasets=["sales"]
+            )
+        )
+        await outgoing.put(register_msg)
         
         async def message_generator():
             """Genera mensajes para el stream saliente"""
@@ -108,59 +102,48 @@ class GRPCConnector:
                     break
                 yield msg
         
-        # Crear stub del servicio
-        stub = ConnectorServiceStub(self.channel)
+        # Crear stub del servicio generado
+        stub = connector_pb2_grpc.ConnectorServiceStub(self.channel)
         
         # Iniciar stream bidireccional
         call = stub.Connect(message_generator())
         
-        # Helper para deserializar protobuf Struct a dict
-        def proto_to_dict(data: bytes) -> dict:
-            s = struct_pb2.Struct()
-            s.ParseFromString(data)
-            return MessageToDict(s)
-        
-        # Procesar comandos entrantes del Gateway
-        async for command_bytes in call:
-            command = proto_to_dict(command_bytes)
-            await self._handle_command(command, outgoing, dict_to_proto)
+        # Procesar comandos entrantes del Gateway (ya deserializados como protobuf)
+        async for command in call:
+            await self._handle_command(command, outgoing)
     
-    async def _handle_command(self, command: dict, outgoing: asyncio.Queue, dict_to_proto):
-        """Procesa comandos del Gateway"""
-        cmd_type = command.get("type")
-        req_id = command.get("request_id", "")
+    async def _handle_command(self, command: connector_pb2.GatewayCommand, outgoing: asyncio.Queue):
+        """Procesa comandos del Gateway (tipos nativos)"""
+        req_id = command.request_id
         
-        logger.debug(f"Received command: {cmd_type} [{req_id}]")
-        
-        if cmd_type == "register_response":
-            resp = command.get("register_response", {})
-            if resp.get("status") == "ok":
-                session_id = resp.get("session_id")
-                logger.info(f"Registered successfully. Session: {session_id}")
+        # Detectar qué comando es usando HasField con oneof
+        if command.HasField('register_response'):
+            resp = command.register_response
+            if resp.status == "ok":
+                logger.info(f"Registered successfully. Session: {resp.session_id}")
             else:
-                logger.error(f"Registration failed: {resp.get('error')}")
+                logger.error(f"Registration failed: {resp.error}")
         
-        elif cmd_type == "get_flight_info":
-            await self._handle_get_flight_info(req_id, command.get("get_flight_info", {}), outgoing, dict_to_proto)
+        elif command.HasField('get_flight_info'):
+            await self._handle_get_flight_info(req_id, command.get_flight_info, outgoing)
         
-        elif cmd_type == "do_get":
-            await self._handle_do_get(req_id, command.get("do_get", {}), outgoing, dict_to_proto)
+        elif command.HasField('do_get'):
+            await self._handle_do_get(req_id, command.do_get, outgoing)
         
-        elif cmd_type == "heartbeat":
-            response = {
-                "request_id": req_id,
-                "type": "heartbeat",
-                "heartbeat": {
-                    "tenant_id": self.tenant_id,
-                    "timestamp": command.get("heartbeat", {}).get("timestamp", 0)
-                }
-            }
-            await outgoing.put(dict_to_proto(response))
+        elif command.HasField('heartbeat'):
+            response = connector_pb2.ConnectorMessage(
+                request_id=req_id,
+                heartbeat=connector_pb2.HeartbeatResponse(
+                    tenant_id=self.tenant_id,
+                    timestamp=command.heartbeat.timestamp
+                )
+            )
+            await outgoing.put(response)
     
-    async def _handle_get_flight_info(self, request_id: str, get_info: dict, outgoing: asyncio.Queue, dict_to_proto):
-        """Maneja solicitud de FlightInfo"""
-        path = get_info.get("path", [])
-        rows = get_info.get("rows")
+    async def _handle_get_flight_info(self, request_id: str, get_info: connector_pb2.GetFlightInfoRequest, outgoing: asyncio.Queue):
+        """Maneja solicitud de FlightInfo con tipos nativos"""
+        path = list(get_info.path)
+        rows = get_info.rows
         
         dataset_name = path[0] if path else None
         
@@ -189,25 +172,27 @@ class GRPCConnector:
         else:
             partitions = 1
         
-        response = {
-            "request_id": request_id,
-            "type": "flight_info",
-            "flight_info": {
-                "status": "ok",
-                "schema": base64.b64encode(data_loader.get_schema_bytes()).decode('ascii'),
-                "total_records": data_loader.total_records,
-                "total_bytes": total_bytes,
-                "dataset": data_loader.current_dataset,
-                "partitions": partitions
-            }
-        }
+        # Respuesta con tipo nativo (schema como bytes, no base64)
+        response = connector_pb2.ConnectorMessage(
+            request_id=request_id,
+            flight_info=connector_pb2.FlightInfoResponse(
+                status="ok",
+                schema=data_loader.get_schema_bytes(),  # Bytes directos, no base64
+                total_records=data_loader.total_records,
+                total_bytes=total_bytes,
+                dataset=data_loader.current_dataset,
+                partitions=partitions
+            )
+        )
         
         logger.info(f"FlightInfo: {data_loader.current_dataset}, {data_loader.total_records:,} rows, {total_bytes/1024/1024:.2f} MB, {partitions} partitions")
-        await outgoing.put(dict_to_proto(response))
+        await outgoing.put(response)
     
-    async def _handle_do_get(self, request_id: str, do_get: dict, outgoing: asyncio.Queue, dict_to_proto):
-        """Maneja solicitud DoGet con streaming de Arrow IPC"""
-        ticket = do_get.get("ticket", "")
+    async def _handle_do_get(self, request_id: str, do_get: connector_pb2.DoGetRequest, outgoing: asyncio.Queue):
+        """Maneja solicitud DoGet con streaming de Arrow IPC nativo"""
+        import json
+        
+        ticket = do_get.ticket
         
         # Decodificar ticket para info de partición
         partition = 0
@@ -223,18 +208,17 @@ class GRPCConnector:
             except Exception:
                 logger.debug(f"Ticket is plain dataset name")
         
-        # Enviar stream_start
-        start_msg = {
-            "request_id": request_id,
-            "type": "stream_status",
-            "status": {
-                "type": "stream_start",
-                "schema": base64.b64encode(data_loader.get_schema_bytes()).decode('ascii'),
-                "partition": partition,
-                "total_partitions": total_partitions
-            }
-        }
-        await outgoing.put(dict_to_proto(start_msg))
+        # Enviar stream_start con tipo nativo
+        start_msg = connector_pb2.ConnectorMessage(
+            request_id=request_id,
+            stream_status=connector_pb2.StreamStatus(
+                type="stream_start",
+                schema=data_loader.get_schema_bytes(),  # Bytes directos
+                partition=partition,
+                total_partitions=total_partitions
+            )
+        )
+        await outgoing.put(start_msg)
         
         # Enviar chunks de Arrow IPC
         total_bytes = 0
@@ -250,63 +234,45 @@ class GRPCConnector:
                 batches_to_send = all_batches
             
             for batch_bytes in batches_to_send:
-                # Enviar como arrow_chunk
-                chunk_msg = {
-                    "request_id": request_id,
-                    "type": "arrow_chunk",
-                    "arrow_chunk": base64.b64encode(batch_bytes).decode('ascii')
-                }
-                await outgoing.put(dict_to_proto(chunk_msg))
+                # Enviar como ArrowChunk con bytes directos (sin base64!)
+                chunk_msg = connector_pb2.ConnectorMessage(
+                    request_id=request_id,
+                    arrow_chunk=connector_pb2.ArrowChunk(
+                        data=batch_bytes,  # Bytes directos, protobuf los maneja eficientemente
+                        partition=partition
+                    )
+                )
+                await outgoing.put(chunk_msg)
                 total_bytes += len(batch_bytes)
                 await asyncio.sleep(0)
             
             # Enviar stream_end
-            end_msg = {
-                "request_id": request_id,
-                "type": "stream_status",
-                "status": {
-                    "type": "stream_end",
-                    "partition": partition,
-                    "total_bytes": total_bytes
-                }
-            }
-            await outgoing.put(dict_to_proto(end_msg))
+            end_msg = connector_pb2.ConnectorMessage(
+                request_id=request_id,
+                stream_status=connector_pb2.StreamStatus(
+                    type="stream_end",
+                    partition=partition,
+                    total_bytes=total_bytes
+                )
+            )
+            await outgoing.put(end_msg)
             logger.info(f"Partition {partition} complete. {len(batches_to_send)} batches, {total_bytes/1024/1024:.2f} MB")
         
         except Exception as e:
             logger.error(f"Error streaming data: {e}")
-            error_msg = {
-                "request_id": request_id,
-                "type": "stream_status",
-                "status": {"type": "stream_end", "error": str(e)}
-            }
-            await outgoing.put(dict_to_proto(error_msg))
+            error_msg = connector_pb2.ConnectorMessage(
+                request_id=request_id,
+                stream_status=connector_pb2.StreamStatus(
+                    type="stream_end",
+                    error=str(e)
+                )
+            )
+            await outgoing.put(error_msg)
     
     def stop(self):
         self.running = False
         if self.channel:
             asyncio.create_task(self.channel.close())
-
-
-class ConnectorServiceStub:
-    """Stub simplificado para el servicio gRPC con JSON codec"""
-    
-    def __init__(self, channel):
-        self.channel = channel
-    
-    def Connect(self, request_iterator):
-        """Llama al método Connect del servicio usando JSON codec"""
-        # Crear multi-callable con codec JSON
-        multi_callable = self.channel.stream_stream(
-            '/connector.ConnectorService/Connect',
-            request_serializer=lambda x: x,  # Ya son bytes JSON
-            response_deserializer=lambda x: x,  # Retornar bytes JSON
-        )
-        # Llamar con metadata para especificar content-type json
-        return multi_callable(
-            request_iterator,
-            metadata=[('content-type', 'application/grpc+json')]
-        )
 
 
 if __name__ == "__main__":
