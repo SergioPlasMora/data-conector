@@ -33,6 +33,7 @@ GATEWAY_URI = config.get('gateway', {}).get('uri', "ws://localhost:8080/ws/conne
 _tenant_cfg = config.get('tenant', {}).get('id', 'auto')
 TENANT_ID = f"tenant_{platform.node().replace('-', '_').lower()}" if _tenant_cfg == 'auto' else _tenant_cfg
 PARALLEL_CONNECTIONS = config.get('performance', {}).get('parallel_connections', 1)
+PARALLEL_PARTITIONS = config.get('performance', {}).get('parallel_partitions', True)
 MAX_CHUNK_SIZE = config.get('performance', {}).get('max_chunk_size', 65536)
 RECONNECT_DELAY = config.get('performance', {}).get('reconnect_delay', 5)
 
@@ -131,7 +132,7 @@ class ArrowConnectorWorker:
             }))
 
     async def _handle_get_flight_info(self, request_id: str, descriptor: dict):
-        """Retorna metadata del dataset"""
+        """Retorna metadata del dataset incluyendo número de particiones recomendadas"""
         # Extraer parámetros del descriptor
         dataset_name = None
         rows = None
@@ -168,6 +169,21 @@ class ArrowConnectorWorker:
         schema_bytes = data_loader.get_schema_bytes()
         schema_b64 = base64.b64encode(schema_bytes).decode('ascii')
         
+        # Calcular número óptimo de particiones basado en tamaño
+        # Solo si parallel_partitions está habilitado en config
+        total_bytes = data_loader.total_bytes
+        if PARALLEL_PARTITIONS:
+            if total_bytes < 10 * 1024 * 1024:        # < 10MB
+                partitions = 1
+            elif total_bytes < 50 * 1024 * 1024:      # 10-50MB
+                partitions = 2
+            elif total_bytes < 100 * 1024 * 1024:     # 50-100MB
+                partitions = 4
+            else:                                      # > 100MB
+                partitions = 8
+        else:
+            partitions = 1  # Forzar 1 partición para pruebas
+        
         response = {
             "request_id": request_id,
             "status": "ok",
@@ -175,9 +191,11 @@ class ArrowConnectorWorker:
                 "schema": schema_b64,
                 "total_records": data_loader.total_records,
                 "total_bytes": data_loader.total_bytes,
-                "dataset": data_loader.current_dataset
+                "dataset": data_loader.current_dataset,
+                "partitions": partitions  # Número de particiones para paralelismo
             }
         }
+        logger.info(f"FlightInfo: {data_loader.current_dataset}, {data_loader.total_records:,} rows, {total_bytes/1024/1024:.2f} MB, {partitions} partitions")
         await self.websocket.send(json.dumps(response))
 
     async def _handle_do_get(self, request_id: str, ticket: str):
