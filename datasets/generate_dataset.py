@@ -3,20 +3,17 @@ import random
 import sys
 from datetime import datetime, timedelta
 
-# Usa el valor pasado por consola (ej: 10, 20, 50...)
-# Si no pasas nada, por defecto genera 10 MB
 TARGET_MB = int(sys.argv[1]) if len(sys.argv) > 1 else 10
 TARGET_BYTES = TARGET_MB * 1024 * 1024
 
 filename = f"dataset_{TARGET_MB}mb.csv"
 
 header = ["id", "name", "value", "category", "timestamp"]
-names = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon", "Zeta", "Eta", "Theta"]
-categories = ["A", "B", "C"]
+categories = [f"C{n}" for n in range(500)]
 
 def random_timestamp():
-    start = datetime(2025, 1, 1)
-    delta = timedelta(seconds=random.randint(0, 86400 * 30))
+    start = datetime(2000, 1, 1)
+    delta = timedelta(seconds=random.randint(0, 20 * 365 * 24 * 3600))
     return (start + delta).isoformat() + "Z"
 
 row_id = 1
@@ -32,14 +29,13 @@ with open(filename, "a", newline="", encoding="utf-8") as f:
     while current_size < TARGET_BYTES:
         writer.writerow([
             row_id,
-            f"Item {random.choice(names)}",
-            round(random.uniform(100, 5000), 2),
+            f"Item-{row_id}-{random.randint(1, 1_000_000)}",
+            random.random() * random.randint(1, 10_000_000),
             random.choice(categories),
             random_timestamp()
         ])
         row_id += 1
 
-        # Revisar el tamaño cada 1000 filas (más rápido)
         if row_id % 1000 == 0:
             current_size = f.tell()
 

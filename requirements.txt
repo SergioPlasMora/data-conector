@@ -6,3 +6,4 @@ pandas>=2.3.3
 pyyaml>=6.0
 grpcio>=1.76.0
 protobuf>=5.27.0
+duckdb>=1.4.3

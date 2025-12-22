@@ -3,12 +3,14 @@
 
 # Conexión al Gateway
 gateway:
-  # URI WebSocket
-  # uri: "ws://192.99.247.70:8081/ws/connect"
-  uri: "ws://localhost:8081/ws/connect"
+  # URI WebSocket (via Traefik o directo)
+  # uri: "ws://192.99.247.70:8081/ws/connect"  # Producción
+  # uri: "ws://gateway.localhost:8888/ws/connect"  # Dev via Traefik
+  uri: "ws://localhost:8081/ws/connect" # Dev directo (requiere puerto expuesto)
 
-  # URI gRPC (para modo gRPC)
+  # URI gRPC (para modo gRPC) - Puerto 50051 expuesto por Traefik
   grpc_uri: "localhost:50051"
+  # grpc_uri: "192.99.247.70:50051"  # Producción
 
   # Modo de transporte: "websocket" o "grpc"
   transport_mode: "grpc"
@@ -20,6 +22,7 @@ tenant:
   # id: "5de85659-2884-44fa-97fb-307dae79cb7f"
   # 511baf05-5839-4f58-a74e-661262facba8
   # bf935f05-bf2e-4138-bfec-f4baaf99fecc
+
   id: "511baf05-5839-4f58-a74e-661262facba8"
 
 # Configuración de rendimiento
@@ -37,6 +40,12 @@ performance:
   # Tamaño máximo de chunk en filas (afecta memoria y latencia)
   # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)
   max_chunk_size: 65536
+
+  # Compresión Arrow IPC para transferencia
+  # Opciones: 'lz4' (rápido, ~50% reducción), 'zstd' (mejor ratio), 'none' (sin compresión)
+  # NOTA: Apache Arrow en navegador (CDN) NO soporta descompresión LZ4/ZSTD
+  # Solo usar compresión si el cliente final soporta descompresión (ej: Python, Java)
+  arrow_compression: "none"
 
   # Timeout de reconexión en segundos
   reconnect_delay: 5

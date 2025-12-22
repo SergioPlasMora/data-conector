@@ -37,6 +37,9 @@ _tenant_cfg = config.get('tenant', {}).get('id', 'auto')
 TENANT_ID = f"tenant_{platform.node().replace('-', '_').lower()}" if _tenant_cfg == 'auto' else _tenant_cfg
 RECONNECT_DELAY = config.get('performance', {}).get('reconnect_delay', 5)
 PARALLEL_PARTITIONS = config.get('performance', {}).get('parallel_partitions', True)
+ARROW_COMPRESSION = config.get('performance', {}).get('arrow_compression', None)
+if ARROW_COMPRESSION and ARROW_COMPRESSION.lower() == 'none':
+    ARROW_COMPRESSION = None
 
 
 class GRPCConnector:
@@ -223,7 +226,7 @@ class GRPCConnector:
         # Enviar chunks de Arrow IPC
         total_bytes = 0
         try:
-            all_batches = data_loader.get_record_batches()
+            all_batches = data_loader.get_record_batches(compression=ARROW_COMPRESSION)
             total_batches = len(all_batches)
             
             if total_partitions > 1 and total_batches > 1:
