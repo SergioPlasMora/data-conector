@@ -37,9 +37,10 @@ _tenant_cfg = config.get('tenant', {}).get('id', 'auto')
 TENANT_ID = f"tenant_{platform.node().replace('-', '_').lower()}" if _tenant_cfg == 'auto' else _tenant_cfg
 RECONNECT_DELAY = config.get('performance', {}).get('reconnect_delay', 5)
 PARALLEL_PARTITIONS = config.get('performance', {}).get('parallel_partitions', True)
-ARROW_COMPRESSION = config.get('performance', {}).get('arrow_compression', None)
-if ARROW_COMPRESSION and ARROW_COMPRESSION.lower() == 'none':
-    ARROW_COMPRESSION = None
+# Compresión de transferencia: 'zstd' (recomendado) o None
+TRANSFER_COMPRESSION = config.get('performance', {}).get('transfer_compression', 'zstd')
+if TRANSFER_COMPRESSION and TRANSFER_COMPRESSION.lower() == 'none':
+    TRANSFER_COMPRESSION = None
 
 
 class GRPCConnector:
@@ -211,22 +212,24 @@ class GRPCConnector:
             except Exception:
                 logger.debug(f"Ticket is plain dataset name")
         
-        # Enviar stream_start con tipo nativo
+        # Enviar stream_start con tipo nativo - incluyendo tipo de compresión
+        compression = TRANSFER_COMPRESSION if TRANSFER_COMPRESSION else 'none'
         start_msg = connector_pb2.ConnectorMessage(
             request_id=request_id,
             stream_status=connector_pb2.StreamStatus(
                 type="stream_start",
                 schema=data_loader.get_schema_bytes(),  # Bytes directos
                 partition=partition,
-                total_partitions=total_partitions
+                total_partitions=total_partitions,
+                compression=compression  # Indica al cliente cómo descomprimir
             )
         )
         await outgoing.put(start_msg)
         
-        # Enviar chunks de Arrow IPC
+        # Enviar chunks de Arrow IPC con compresión de transferencia
         total_bytes = 0
         try:
-            all_batches = data_loader.get_record_batches(compression=ARROW_COMPRESSION)
+            all_batches = data_loader.get_record_batches(transfer_compression=TRANSFER_COMPRESSION)
             total_batches = len(all_batches)
             
             if total_partitions > 1 and total_batches > 1:
