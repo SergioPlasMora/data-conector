@@ -36,6 +36,8 @@ PARALLEL_CONNECTIONS = config.get('performance', {}).get('parallel_connections',
 PARALLEL_PARTITIONS = config.get('performance', {}).get('parallel_partitions', True)
 MAX_CHUNK_SIZE = config.get('performance', {}).get('max_chunk_size', 65536)
 RECONNECT_DELAY = config.get('performance', {}).get('reconnect_delay', 5)
+# Compresión de transferencia: 'zstd' (recomendado) o None
+TRANSFER_COMPRESSION = config.get('performance', {}).get('transfer_compression', 'zstd')
 
 class ArrowConnectorWorker:
     """Un worker que maneja una conexión WebSocket"""
@@ -221,23 +223,26 @@ class ArrowConnectorWorker:
                 # El ticket es probablemente solo el nombre del dataset - esto es normal
                 logger.debug(f"Ticket is plain dataset name: {ticket[:50] if ticket else 'empty'}...")
         
-        # 1. Enviar metadata de inicio (JSON)
+        # 1. Enviar metadata de inicio (JSON) - incluyendo tipo de compresión
+        compression = TRANSFER_COMPRESSION if TRANSFER_COMPRESSION else 'none'
         start_msg = {
             "request_id": request_id, 
             "status": "ok", 
             "type": "stream_start",
             "schema": base64.b64encode(data_loader.get_schema_bytes()).decode('ascii'),
             "partition": partition,
-            "total_partitions": total_partitions
+            "total_partitions": total_partitions,
+            "compression": compression  # Indica al cliente cómo descomprimir
         }
         await self.websocket.send(json.dumps(start_msg))
         
-        # 2. Obtener batches y calcular slice para esta partición
+        # 2. Obtener batches con compresión de transferencia
         total_bytes = 0
         
         try:
-            all_batches = data_loader.get_record_batches()
+            all_batches = data_loader.get_record_batches(transfer_compression=TRANSFER_COMPRESSION)
             total_batches = len(all_batches)
+
             
             # Calcular qué batches enviar para esta partición
             if total_partitions > 1 and total_batches > 1:

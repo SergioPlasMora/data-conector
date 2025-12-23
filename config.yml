@@ -21,9 +21,9 @@ tenant:
   # Server
   # id: "5de85659-2884-44fa-97fb-307dae79cb7f"
   # 511baf05-5839-4f58-a74e-661262facba8
-  # bf935f05-bf2e-4138-bfec-f4baaf99fecc
+   id: "bf935f05-bf2e-4138-bfec-f4baaf99fecc"
 
-  id: "511baf05-5839-4f58-a74e-661262facba8"
+  # id: "511baf05-5839-4f58-a74e-661262facba8"
 
 # Configuración de rendimiento
 performance:
@@ -41,11 +41,12 @@ performance:
   # Valores típicos: 16384 (1MB), 32768 (2MB), 65536 (4MB)
   max_chunk_size: 65536
 
-  # Compresión Arrow IPC para transferencia
-  # Opciones: 'lz4' (rápido, ~50% reducción), 'zstd' (mejor ratio), 'none' (sin compresión)
-  # NOTA: Apache Arrow en navegador (CDN) NO soporta descompresión LZ4/ZSTD
-  # Solo usar compresión si el cliente final soporta descompresión (ej: Python, Java)
-  arrow_compression: "none"
+  # Compresión de bytes para transferencia WebSocket
+  # 'zstd' = ~60-70% reducción, requiere fzstd en browser para descompresión
+  # 'none' = sin compresión (máxima compatibilidad)
+  # NOTA: Esta compresión se aplica DESPUÉS de serializar Arrow IPC,
+  #       permitiendo descompresión en browser antes de tableFromIPC()
+  transfer_compression: "zstd"
 
   # Timeout de reconexión en segundos
   reconnect_delay: 5

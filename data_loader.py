@@ -14,6 +14,13 @@ import logging
 import os
 from pathlib import Path
 
+# Compresión ZSTD para transferencia
+try:
+    import zstandard as zstd
+    ZSTD_AVAILABLE = True
+except ImportError:
+    ZSTD_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # Directorio donde se almacenan los datasets
@@ -146,14 +153,17 @@ class DataLoader:
         return self._table.schema
 
     def get_record_batches(self, max_chunksize: int = 65536, as_bytes: bool = True, 
-                           compression: str = None) -> list:
+                           compression: str = None, transfer_compression: str = None) -> list:
         """
         Retorna los batches del dataset.
         
         Args:
             max_chunksize: Máximo número de filas por batch
             as_bytes: Si True, retorna bytes serializados. Si False, retorna RecordBatch objects.
-            compression: Tipo de compresión ('lz4', 'zstd', o None para sin compresión)
+            compression: DEPRECATED - Compresión Arrow IPC interna ('lz4', 'zstd'), NO soportada por Arrow JS
+            transfer_compression: Compresión externa de bytes para transferencia ('zstd' o None)
+                                  Esta compresión se aplica DESPUÉS de serializar Arrow IPC,
+                                  permitiendo descompresión con fzstd en browser.
         
         Returns:
             Lista de bytes o RecordBatch según as_bytes
@@ -166,16 +176,21 @@ class DataLoader:
         if not as_bytes:
             return batches
         
-        # Configurar opciones de escritura con compresión opcional
-        if compression and compression.lower() in ('lz4', 'zstd'):
-            ipc_options = pa.ipc.IpcWriteOptions(compression=compression.lower())
-            logger.info(f"Using {compression.upper()} compression for Arrow IPC")
-        else:
-            ipc_options = pa.ipc.IpcWriteOptions()
+        # NO usar compresión Arrow IPC interna - Arrow JS no la soporta
+        ipc_options = pa.ipc.IpcWriteOptions()
             
         batches_bytes = []
         total_uncompressed = 0
+        total_arrow_bytes = 0
         total_compressed = 0
+        
+        # Preparar compresor ZSTD si está habilitado
+        zstd_compressor = None
+        if transfer_compression == 'zstd' and ZSTD_AVAILABLE:
+            zstd_compressor = zstd.ZstdCompressor(level=3)  # Nivel 1 = balance velocidad/ratio
+            logger.info("Using ZSTD compression for transfer (level 3)")
+        elif transfer_compression == 'zstd' and not ZSTD_AVAILABLE:
+            logger.warning("ZSTD requested but zstandard not installed. Sending uncompressed.")
         
         for batch in batches:
             total_uncompressed += batch.nbytes
@@ -183,12 +198,23 @@ class DataLoader:
             with pa.ipc.new_stream(sink, self._table.schema, options=ipc_options) as writer:
                 writer.write_batch(batch)
             batch_bytes = sink.getvalue().to_pybytes()
-            total_compressed += len(batch_bytes)
+            total_arrow_bytes += len(batch_bytes)
+            
+            # Aplicar compresión ZSTD externa si está habilitada
+            if zstd_compressor:
+                batch_bytes = zstd_compressor.compress(batch_bytes)
+                total_compressed += len(batch_bytes)
+            else:
+                total_compressed += len(batch_bytes)
+            
             batches_bytes.append(batch_bytes)
         
-        if compression:
-            ratio = (1 - total_compressed / total_uncompressed) * 100 if total_uncompressed > 0 else 0
-            logger.info(f"Compression: {total_uncompressed / 1024 / 1024:.2f} MB → {total_compressed / 1024 / 1024:.2f} MB ({ratio:.1f}% reduction)")
+        # Log de métricas de compresión
+        if zstd_compressor:
+            ratio = (1 - total_compressed / total_arrow_bytes) * 100 if total_arrow_bytes > 0 else 0
+            logger.info(f"Transfer compression: {total_arrow_bytes / 1024 / 1024:.2f} MB → {total_compressed / 1024 / 1024:.2f} MB ({ratio:.1f}% reduction)")
+        else:
+            logger.info(f"No transfer compression: {total_arrow_bytes / 1024 / 1024:.2f} MB")
             
         return batches_bytes
 
