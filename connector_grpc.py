@@ -52,12 +52,36 @@ class GRPCConnector:
         self.running = False
         self.channel = None
         
+        # Check if mTLS certificates exist
+        self.certs_path = Path(__file__).parent / "certs"
+        self.mtls_enabled = (
+            (self.certs_path / "ca.crt").exists() and
+            (self.certs_path / "client.crt").exists() and
+            (self.certs_path / "client.key").exists()
+        )
+        
         # Cargar datos al inicio
         data_loader.load_or_generate_dataset()
         
         logger.info(f"GRPCConnector initialized (native protobuf):")
         logger.info(f"  Gateway URI: {self.grpc_uri}")
         logger.info(f"  Tenant ID: {self.tenant_id}")
+        logger.info(f"  mTLS Enabled: {self.mtls_enabled}")
+    
+    def _load_tls_credentials(self):
+        """Load TLS credentials for mTLS"""
+        with open(self.certs_path / "ca.crt", "rb") as f:
+            ca_cert = f.read()
+        with open(self.certs_path / "client.crt", "rb") as f:
+            client_cert = f.read()
+        with open(self.certs_path / "client.key", "rb") as f:
+            client_key = f.read()
+        
+        return grpc.ssl_channel_credentials(
+            root_certificates=ca_cert,
+            private_key=client_key,
+            certificate_chain=client_cert,
+        )
     
     async def run(self):
         """Loop principal de conexión"""
@@ -67,8 +91,14 @@ class GRPCConnector:
             try:
                 logger.info(f"Connecting to gRPC server {self.grpc_uri}...")
                 
-                # Crear canal gRPC async
-                self.channel = grpc.aio.insecure_channel(self.grpc_uri)
+                # Crear canal gRPC async (con mTLS si está disponible)
+                if self.mtls_enabled:
+                    credentials = self._load_tls_credentials()
+                    self.channel = grpc.aio.secure_channel(self.grpc_uri, credentials)
+                    logger.info("Using mTLS secure channel")
+                else:
+                    self.channel = grpc.aio.insecure_channel(self.grpc_uri)
+                    logger.warning("Using INSECURE channel (no certificates found)")
                 
                 # Establecer stream bidireccional
                 await self._connect_and_run()
