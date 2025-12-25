@@ -16,6 +16,7 @@ from proto import connector_pb2
 from proto import connector_pb2_grpc
 
 from data_loader import data_loader
+from metrics_reporter import MetricsReporter
 
 logger = logging.getLogger("ConnectorGRPC")
 
@@ -42,6 +43,12 @@ TRANSFER_COMPRESSION = config.get('performance', {}).get('transfer_compression',
 if TRANSFER_COMPRESSION and TRANSFER_COMPRESSION.lower() == 'none':
     TRANSFER_COMPRESSION = None
 
+# Metrics configuration (Observability Plane)
+METRICS_ENABLED = config.get('metrics', {}).get('enabled', True)
+METRICS_API_URL = config.get('metrics', {}).get('api_url', 'http://localhost:8000')
+METRICS_HOST = config.get('metrics', {}).get('api_host', None)  # Host header for Traefik
+METRICS_INTERVAL = config.get('metrics', {}).get('interval_seconds', 30)
+
 
 class GRPCConnector:
     """Conector gRPC bidireccional al Gateway con protobuf nativo"""
@@ -63,10 +70,20 @@ class GRPCConnector:
         # Cargar datos al inicio
         data_loader.load_or_generate_dataset()
         
+        # Initialize metrics reporter (Observability Plane)
+        self.metrics: MetricsReporter | None = None
+        if METRICS_ENABLED:
+            self.metrics = MetricsReporter(
+                api_url=METRICS_API_URL,
+                tenant_id=self.tenant_id,
+                host_header=METRICS_HOST
+            )
+        
         logger.info(f"GRPCConnector initialized (native protobuf):")
         logger.info(f"  Gateway URI: {self.grpc_uri}")
         logger.info(f"  Tenant ID: {self.tenant_id}")
         logger.info(f"  mTLS Enabled: {self.mtls_enabled}")
+        logger.info(f"  Metrics Enabled: {METRICS_ENABLED}")
     
     def _load_tls_credentials(self):
         """Load TLS credentials for mTLS"""
@@ -86,6 +103,10 @@ class GRPCConnector:
     async def run(self):
         """Loop principal de conexión"""
         self.running = True
+        
+        # Start metrics reporter loop (Observability Plane)
+        if self.metrics:
+            asyncio.create_task(self.metrics.start(interval=METRICS_INTERVAL))
         
         while self.running:
             try:
@@ -280,6 +301,11 @@ class GRPCConnector:
                 )
                 await outgoing.put(chunk_msg)
                 total_bytes += len(batch_bytes)
+                
+                # Record metrics (Observability Plane)
+                if self.metrics:
+                    self.metrics.record_bytes_sent(len(batch_bytes))
+                
                 await asyncio.sleep(0)
             
             # Enviar stream_end
@@ -292,6 +318,12 @@ class GRPCConnector:
                 )
             )
             await outgoing.put(end_msg)
+            
+            # Record query completion (Observability Plane)
+            if self.metrics:
+                self.metrics.record_query_processed()
+                self.metrics.record_records_sent(data_loader.total_records)
+            
             logger.info(f"Partition {partition} complete. {len(batches_to_send)} batches, {total_bytes/1024/1024:.2f} MB")
         
         except Exception as e:
