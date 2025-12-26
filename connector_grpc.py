@@ -43,6 +43,10 @@ TRANSFER_COMPRESSION = config.get('performance', {}).get('transfer_compression',
 if TRANSFER_COMPRESSION and TRANSFER_COMPRESSION.lower() == 'none':
     TRANSFER_COMPRESSION = None
 
+# Queue configuration
+QUEUE_ENABLED = config.get('queue', {}).get('enabled', True)
+MAX_QUEUE_SIZE = config.get('queue', {}).get('max_size', 100)
+
 # Metrics configuration (Observability Plane)
 METRICS_ENABLED = config.get('metrics', {}).get('enabled', True)
 METRICS_API_URL = config.get('metrics', {}).get('api_url', 'http://localhost:8000')
@@ -84,6 +88,13 @@ class GRPCConnector:
         logger.info(f"  Tenant ID: {self.tenant_id}")
         logger.info(f"  mTLS Enabled: {self.mtls_enabled}")
         logger.info(f"  Metrics Enabled: {METRICS_ENABLED}")
+        logger.info(f"  Queue Enabled: {QUEUE_ENABLED} (max: {MAX_QUEUE_SIZE})")
+        
+        # Request queue for sequential processing
+        self.request_queue: asyncio.Queue = asyncio.Queue()
+        self.queue_enabled = QUEUE_ENABLED
+        self.max_queue_size = MAX_QUEUE_SIZE
+
     
     def _load_tls_credentials(self):
         """Load TLS credentials for mTLS"""
@@ -149,6 +160,11 @@ class GRPCConnector:
         )
         await outgoing.put(register_msg)
         
+        # Start queue worker for sequential request processing
+        worker_task = None
+        if self.queue_enabled:
+            worker_task = asyncio.create_task(self._queue_worker(outgoing))
+        
         async def message_generator():
             """Genera mensajes para el stream saliente"""
             while self.running:
@@ -164,8 +180,17 @@ class GRPCConnector:
         call = stub.Connect(message_generator())
         
         # Procesar comandos entrantes del Gateway (ya deserializados como protobuf)
-        async for command in call:
-            await self._handle_command(command, outgoing)
+        try:
+            async for command in call:
+                await self._handle_command(command, outgoing)
+        finally:
+            if worker_task:
+                worker_task.cancel()
+                try:
+                    await worker_task
+                except asyncio.CancelledError:
+                    pass
+
     
     async def _handle_command(self, command: connector_pb2.GatewayCommand, outgoing: asyncio.Queue):
         """Procesa comandos del Gateway (tipos nativos)"""
@@ -183,7 +208,28 @@ class GRPCConnector:
             await self._handle_get_flight_info(req_id, command.get_flight_info, outgoing)
         
         elif command.HasField('do_get'):
-            await self._handle_do_get(req_id, command.do_get, outgoing)
+            if self.queue_enabled:
+                # Enqueue request for sequential processing
+                queue_size = self.request_queue.qsize()
+                if queue_size >= self.max_queue_size:
+                    # Queue full, reject request
+                    logger.warning(f"[{req_id}] Queue full ({queue_size}). Rejecting request.")
+                    error_msg = connector_pb2.ConnectorMessage(
+                        request_id=req_id,
+                        stream_status=connector_pb2.StreamStatus(
+                            type="stream_end",
+                            error="Queue full, please try again later"
+                        )
+                    )
+                    await outgoing.put(error_msg)
+                else:
+                    # Enqueue for sequential processing
+                    await self.request_queue.put((req_id, command.do_get, outgoing))
+                    logger.info(f"[{req_id}] Enqueued DoGet. Queue position: {queue_size + 1}")
+            else:
+                # Queue disabled, process immediately
+                await self._handle_do_get(req_id, command.do_get, outgoing)
+
         
         elif command.HasField('heartbeat'):
             response = connector_pb2.ConnectorMessage(
@@ -195,7 +241,42 @@ class GRPCConnector:
             )
             await outgoing.put(response)
     
+    async def _queue_worker(self, outgoing: asyncio.Queue):
+        """
+        Worker that processes DoGet requests sequentially.
+        This prevents bandwidth saturation by processing one request at a time.
+        """
+        logger.info("Queue worker started - processing requests sequentially")
+        
+        while self.running:
+            try:
+                # Wait for a request in the queue (with timeout to check self.running)
+                req_id, do_get, out_queue = await asyncio.wait_for(
+                    self.request_queue.get(), 
+                    timeout=1.0
+                )
+                
+                queue_remaining = self.request_queue.qsize()
+                logger.info(f"[{req_id}] Dequeued. Processing... (queue remaining: {queue_remaining})")
+                
+                # Process the request (this blocks until complete)
+                await self._handle_do_get(req_id, do_get, out_queue)
+                
+                logger.info(f"[{req_id}] Transfer complete. Queue size: {self.request_queue.qsize()}")
+                
+            except asyncio.TimeoutError:
+                # No items in queue, continue to check self.running
+                continue
+            except asyncio.CancelledError:
+                logger.info("Queue worker cancelled")
+                break
+            except Exception as e:
+                logger.error(f"Queue worker error: {e}")
+        
+        logger.info("Queue worker stopped")
+    
     async def _handle_get_flight_info(self, request_id: str, get_info: connector_pb2.GetFlightInfoRequest, outgoing: asyncio.Queue):
+
         """Maneja solicitud de FlightInfo con tipos nativos"""
         path = list(get_info.path)
         rows = get_info.rows

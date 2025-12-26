@@ -21,9 +21,9 @@ tenant:
   # Server
   # id: "5de85659-2884-44fa-97fb-307dae79cb7f"
   # 511baf05-5839-4f58-a74e-661262facba8
-  id: "bf935f05-bf2e-4138-bfec-f4baaf99fecc"
+  # id: "bf935f05-bf2e-4138-bfec-f4baaf99fecc"
 
-  # id: "511baf05-5839-4f58-a74e-661262facba8"
+  id: "511baf05-5839-4f58-a74e-661262facba8"
 
 # Configuración de rendimiento
 performance:
@@ -59,9 +59,18 @@ logging:
 metrics:
   enabled: true
   # API URL for luzzi-core-im (metrics endpoint via Traefik)
-  api_url: "http://127.0.0.1:8888"  # Dev via Traefik (Windows compatible)
-  api_host: "api.localhost"  # Host header for Traefik routing
+  api_url: "http://127.0.0.1:8888" # Dev via Traefik (Windows compatible)
+  api_host: "api.localhost" # Host header for Traefik routing
   # api_url: "https://api.luzzi.com"  # Production
   # Interval in seconds between metric reports
   interval_seconds: 30
 
+# Cola de solicitudes (Request Queue)
+# Procesa solicitudes DoGet secuencialmente para evitar saturación de ancho de banda
+queue:
+  # Habilitar procesamiento secuencial de solicitudes
+  # true = encola y procesa uno a la vez (recomendado para conexiones lentas)
+  # false = procesa inmediatamente en paralelo
+  enabled: true
+  # Máximo número de solicitudes en cola (rechaza si se excede)
+  max_size: 100
